@@ -10,7 +10,7 @@ pthread_t tid;
 pthread_t writerthreads[100],readerthreads[100];
 int readercount = 0;
 
-void *reader(void* param)
+void *reader(void* param) 
 {
     sem_wait(&x);
     readercount++;
@@ -63,7 +63,7 @@ int main()
 }
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+//producer consumer
 #include<stdio.h>
 #include<semaphore.h>
 #include<pthread.h>
@@ -150,3 +150,218 @@ int main()
 }
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//Dining philosopher 
+
+//Submitted by : Ashutosh Soni
+
+// Header file include
+#include <bits/stdc++.h>
+#include <pthread.h>
+#include <unistd.h>
+using namespace std;
+
+#define N 10
+#define THINKING 2
+#define HUNGRY 1
+#define EATING 0
+#define LEFT (phnum + 4) % N
+#define RIGHT (phnum + 1) % N
+
+// Philosopher index
+int phil[N];
+int times = 200;
+
+class monitor {
+
+	// state of the philosopher
+	int state[N];
+
+	// Philosopher condition variable
+	pthread_cond_t phcond[N];
+
+	// mutex variable for synchronization
+	pthread_mutex_t condLock;
+
+public:
+	// Test for the desired condition
+	// i.e. Left and Right philosopher are not reading
+	void test(int phnum)
+	{
+
+		if (state[(phnum + 1) % 5] != EATING
+			and state[(phnum + 4) % 5] != EATING
+			and state[phnum] == HUNGRY) {
+			state[phnum] = EATING;
+
+			pthread_cond_signal(&phcond[phnum]);
+		}
+	}
+
+	// Take Fork function
+	void take_fork(int phnum)
+	{
+
+		pthread_mutex_lock(&condLock);
+
+		// Indicates it is hungry
+		state[phnum] = HUNGRY;
+
+		// test for condition
+		test(phnum);
+
+		// If unable to eat.. wait for the signal
+		if (state[phnum] != EATING) {
+			pthread_cond_wait(&phcond[phnum], &condLock);
+		}
+		cout << "Philosopher " << phnum << " is Eating"
+			<< endl;
+
+		pthread_mutex_unlock(&condLock);
+	}
+
+	// Put Fork function
+	void put_fork(int phnum)
+	{
+
+		pthread_mutex_lock(&condLock);
+
+		// Indicates that I am thinking
+		state[phnum] = THINKING;
+
+		test(RIGHT);
+		test(LEFT);
+
+		pthread_mutex_unlock(&condLock);
+	}
+
+	// constructor
+	monitor()
+	{
+
+		for (int i = 0; i < N; i++) {
+			state[i] = THINKING;
+		}
+
+		for (int i = 0; i < N; i++) {
+			pthread_cond_init(&phcond[i], NULL);
+		}
+
+		pthread_mutex_init(&condLock, NULL);
+	}
+
+	// destructor
+	~monitor()
+	{
+
+		for (int i = 0; i < N; i++) {
+			pthread_cond_destroy(&phcond[i]);
+		}
+
+		pthread_mutex_destroy(&condLock);
+	}
+}
+
+// Global Object of the monitor
+phil_object;
+
+void* philosopher(void* arg)
+{
+	int c = 0;
+	while (c < times) {
+		int i = *(int*)arg;
+		sleep(1);
+		phil_object.take_fork(i);
+		sleep(0.5);
+		phil_object.put_fork(i);
+		c++;
+	}
+}
+
+int main()
+{
+
+	// Declaration...
+	pthread_t thread_id[N];
+	pthread_attr_t attr;
+
+	// Initialization...
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr,
+								PTHREAD_CREATE_JOINABLE);
+
+	for (int i = 0; i < N; i++) {
+		phil[i] = i;
+	}
+
+	// Creating...
+	for (int i = 0; i < N; i++) {
+		pthread_create(&thread_id[i], &attr, philosopher,
+					&phil[i]);
+		cout << "Philosopher " << i + 1 << " is thinking..."
+			<< endl;
+	}
+
+	// Joining....
+	for (int i = 0; i < N; i++) {
+		pthread_join(thread_id[i], NULL);
+	}
+
+	// Destroying
+	pthread_attr_destroy(&attr);
+	pthread_exit(NULL);
+
+	return 0;
+}
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+format for shell script
+#!/bin/bash
+
+display_memory_info() {
+        total_memory_gb=$(free | awk 'NR==2 {print $2/1024/1024}')
+        used_memory_mb=$(free | awk 'NR==2 {print $3/1024}')
+        available_memory_gb=$(free -h | awk 'NR==2 {gsub("Gi", "", $7); print $7}')
+        echo "Total Memory: $total_memory_gb GB"
+        echo "Used Memory: $used_memory_mb MB"
+        echo "Available Memory: $available_memory_gb GB"
+
+}
+
+display_disk_info() {
+        df -h | awk '$1 == "drivers" {print "Filesystem:", $1, "Size:", $2, "Used:", $3, "Avail:", $4, "Use%:", $5}'
+}
+cpu_processes() {
+    echo "Top CPU-Intensive Processes:"
+    top -b -n 1 | head -n 15
+}
+network_info() {
+    echo "Network Activity:"
+    nload
+}
+cache_memory() {
+        CACHE_MEMORY_KB=$(free -m | awk 'NR==2{print $6}')
+        AVAILABLE_CACHE_MEMORY_KB=$(free -m | awk 'NR==2{print $7}')
+
+        echo "Cache Memory used: ${CACHE_MEMORY_KB} MB"
+        echo "Available Cache Memory: ${AVAILABLE_CACHE_MEMORY_KB} MB"
+}
+while true; do
+    echo "Menu:"
+    echo "1. Display Memory Information"
+    echo "2. Display Disk Information"
+    echo "3. Display network activity:"
+    echo "4. Display CPU Processes:"
+    echo "5. Display cache memory:"
+    echo "6. Exit"
+    read -p "Enter your choice (1/2/3/4/5/6): " choice
+
+    case "$choice" in
+        1) display_memory_info ;;
+        2) display_disk_info ;;
+        3) network_info ;;
+        4) cpu_processes ;;
+        5) cache_memory ;;
+        6) echo "Exiting. Goodbye!" && exit ;;
+        *) echo "Invalid choice. Please select 1, 2, or 3." ;;
+    esac
+done
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
