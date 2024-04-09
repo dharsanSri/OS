@@ -150,168 +150,76 @@ int main()
 }
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//Dining philosopher 
+dining philosopher
 
-//Submitted by : Ashutosh Soni
-
-// Header file include
-#include <bits/stdc++.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
-using namespace std;
 
-#define N 10
-#define THINKING 2
-#define HUNGRY 1
-#define EATING 0
-#define LEFT (phnum + 4) % N
-#define RIGHT (phnum + 1) % N
+#define NUM_PHILOSOPHERS 5
 
-// Philosopher index
-int phil[N];
-int times = 200;
+pthread_mutex_t chopsticks[NUM_PHILOSOPHERS];
 
-class monitor {
+void *philosopher(void *arg) {
+    int id = *((int *) arg);
+    int left = id;
+    int right = (id + 1) % NUM_PHILOSOPHERS;
 
-	// state of the philosopher
-	int state[N];
+    while (1) {
+        // Try to pick up left chopstick
+        pthread_mutex_lock(&chopsticks[left]);
+        printf("Philosopher %d picks up left chopstick %d\n", id, left);
 
-	// Philosopher condition variable
-	pthread_cond_t phcond[N];
+        // Try to pick up right chopstick
+        pthread_mutex_lock(&chopsticks[right]);
+        printf("Philosopher %d picks up right chopstick %d\n", id, right);
 
-	// mutex variable for synchronization
-	pthread_mutex_t condLock;
+        // Eat
+        printf("Philosopher %d is eating\n", id);
+        usleep(1000000); // Simulate eating time
 
-public:
-	// Test for the desired condition
-	// i.e. Left and Right philosopher are not reading
-	void test(int phnum)
-	{
+        // Release chopsticks
+        pthread_mutex_unlock(&chopsticks[right]);
+        printf("Philosopher %d puts down right chopstick %d\n", id, right);
+        pthread_mutex_unlock(&chopsticks[left]);
+        printf("Philosopher %d puts down left chopstick %d\n", id, left);
 
-		if (state[(phnum + 1) % 5] != EATING
-			and state[(phnum + 4) % 5] != EATING
-			and state[phnum] == HUNGRY) {
-			state[phnum] = EATING;
-
-			pthread_cond_signal(&phcond[phnum]);
-		}
-	}
-
-	// Take Fork function
-	void take_fork(int phnum)
-	{
-
-		pthread_mutex_lock(&condLock);
-
-		// Indicates it is hungry
-		state[phnum] = HUNGRY;
-
-		// test for condition
-		test(phnum);
-
-		// If unable to eat.. wait for the signal
-		if (state[phnum] != EATING) {
-			pthread_cond_wait(&phcond[phnum], &condLock);
-		}
-		cout << "Philosopher " << phnum << " is Eating"
-			<< endl;
-
-		pthread_mutex_unlock(&condLock);
-	}
-
-	// Put Fork function
-	void put_fork(int phnum)
-	{
-
-		pthread_mutex_lock(&condLock);
-
-		// Indicates that I am thinking
-		state[phnum] = THINKING;
-
-		test(RIGHT);
-		test(LEFT);
-
-		pthread_mutex_unlock(&condLock);
-	}
-
-	// constructor
-	monitor()
-	{
-
-		for (int i = 0; i < N; i++) {
-			state[i] = THINKING;
-		}
-
-		for (int i = 0; i < N; i++) {
-			pthread_cond_init(&phcond[i], NULL);
-		}
-
-		pthread_mutex_init(&condLock, NULL);
-	}
-
-	// destructor
-	~monitor()
-	{
-
-		for (int i = 0; i < N; i++) {
-			pthread_cond_destroy(&phcond[i]);
-		}
-
-		pthread_mutex_destroy(&condLock);
-	}
+        // Think
+        printf("Philosopher %d is thinking\n", id);
+        usleep(1000000); // Simulate thinking time
+    }
 }
 
-// Global Object of the monitor
-phil_object;
+int main() {
+    pthread_t philosophers[NUM_PHILOSOPHERS];
+    int ids[NUM_PHILOSOPHERS];
 
-void* philosopher(void* arg)
-{
-	int c = 0;
-	while (c < times) {
-		int i = *(int*)arg;
-		sleep(1);
-		phil_object.take_fork(i);
-		sleep(0.5);
-		phil_object.put_fork(i);
-		c++;
-	}
+    // Initialize mutexes
+    for (int i = 0; i < NUM_PHILOSOPHERS; ++i) {
+        pthread_mutex_init(&chopsticks[i], NULL);
+    }
+
+    // Create philosopher threads
+    for (int i = 0; i < NUM_PHILOSOPHERS; ++i) {
+        ids[i] = i;
+        pthread_create(&philosophers[i], NULL, philosopher, &ids[i]);
+    }
+
+    // Join threads
+    for (int i = 0; i < NUM_PHILOSOPHERS; ++i) {
+        pthread_join(philosophers[i], NULL);
+    }
+
+    // Destroy mutexes
+    for (int i = 0; i < NUM_PHILOSOPHERS; ++i) {
+        pthread_mutex_destroy(&chopsticks[i]);
+    }
+
+    return 0;
 }
 
-int main()
-{
 
-	// Declaration...
-	pthread_t thread_id[N];
-	pthread_attr_t attr;
-
-	// Initialization...
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr,
-								PTHREAD_CREATE_JOINABLE);
-
-	for (int i = 0; i < N; i++) {
-		phil[i] = i;
-	}
-
-	// Creating...
-	for (int i = 0; i < N; i++) {
-		pthread_create(&thread_id[i], &attr, philosopher,
-					&phil[i]);
-		cout << "Philosopher " << i + 1 << " is thinking..."
-			<< endl;
-	}
-
-	// Joining....
-	for (int i = 0; i < N; i++) {
-		pthread_join(thread_id[i], NULL);
-	}
-
-	// Destroying
-	pthread_attr_destroy(&attr);
-	pthread_exit(NULL);
-
-	return 0;
-}
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 format for shell script
 #!/bin/bash
